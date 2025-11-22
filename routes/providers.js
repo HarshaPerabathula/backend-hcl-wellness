@@ -7,6 +7,30 @@ const { goalSchema } = require('../utils/validation');
 
 const router = express.Router();
 
+// Assign patient to provider
+router.post('/assign-patient', auth, requireRole(['provider']), async (req, res) => {
+  try {
+    const { patientId } = req.body;
+
+    const patient = await User.findOne({ _id: patientId, role: 'patient' });
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found' });
+    }
+
+    await User.findByIdAndUpdate(patientId, { 
+      'patientInfo.assignedProvider': req.user._id 
+    });
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $addToSet: { 'providerInfo.patients': patientId }
+    });
+
+    res.json({ message: 'Patient assigned successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Assign goals to patient
 router.post('/assign-goals', auth, requireRole(['provider']), async (req, res) => {
   try {

@@ -14,6 +14,18 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
+// Get all patients (for provider to assign)
+router.get('/all-patients', auth, async (req, res) => {
+  try {
+    const patients = await User.find({ role: 'patient' })
+      .select('profile patientInfo.assignedProvider')
+      .populate('patientInfo.assignedProvider', 'profile.firstName profile.lastName');
+    res.json(patients);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update profile
 router.put('/profile', auth, async (req, res) => {
   try {
