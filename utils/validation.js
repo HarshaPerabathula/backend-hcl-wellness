@@ -8,9 +8,9 @@ const registerSchema = Joi.object({
   lastName: Joi.string().required(),
   dateOfBirth: Joi.date().required(),
   phone: Joi.string().required(),
-  consentGiven: Joi.boolean().required(),
-  licenseNumber: Joi.when('role', { is: 'provider', then: Joi.string().required() }),
-  specialization: Joi.when('role', { is: 'provider', then: Joi.string().required() })
+  consentGiven: Joi.boolean().required()
+  // licenseNumber: Joi.when('role', { is: 'provider', then: Joi.string().required() }),
+  // specialization: Joi.when('role', { is: 'provider', then: Joi.string().required() })
 });
 
 const loginSchema = Joi.object({
