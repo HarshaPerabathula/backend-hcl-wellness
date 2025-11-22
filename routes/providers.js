@@ -73,7 +73,7 @@ router.get('/patients', auth, requireRole(['provider']), async (req, res) => {
     const patients = await User.find({ 
       role: 'patient',
       'patientInfo.assignedProvider': req.user._id 
-    }).select('profile patientInfo.allergies patientInfo.medications');
+    }).select('email profile patientInfo.allergies patientInfo.medications');
     
     res.json(patients);
   } catch (error) {
