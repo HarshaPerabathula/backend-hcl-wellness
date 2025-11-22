@@ -67,17 +67,26 @@ router.get('/dashboard', auth, requireRole(['patient']), async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get active goals
+    // Get active goals with detailed info
     const activeGoals = await WellnessGoal.find({ 
       patientId: req.user._id, 
       status: 'active' 
-    });
+    }).populate('assignedBy', 'profile.firstName profile.lastName');
 
-    // Get today's progress
+    // Get today's progress with goal details
     const todayProgress = await DailyProgress.find({
       patientId: req.user._id,
       date: today
-    });
+    }).populate('goalId', 'goalType unit targets');
+
+    // Get recent progress (last 7 days)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentProgress = await DailyProgress.find({
+      patientId: req.user._id,
+      date: { $gte: sevenDaysAgo, $lte: today }
+    }).populate('goalId', 'goalType unit targets').sort({ date: -1 });
 
     // Get upcoming preventive care
     const upcomingCare = await PreventiveCare.find({
@@ -90,9 +99,41 @@ router.get('/dashboard', auth, requireRole(['patient']), async (req, res) => {
     const healthTips = await HealthTip.find({ isActive: true });
     const randomTip = healthTips[Math.floor(Math.random() * healthTips.length)];
 
+    // Calculate streaks for active goals
+    const goalsWithStreaks = await Promise.all(activeGoals.map(async (goal) => {
+      const goalProgress = await DailyProgress.find({ 
+        goalId: goal._id 
+      }).sort({ date: -1 }).limit(30);
+      
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let tempStreak = 0;
+      
+      for (const progress of goalProgress) {
+        if (progress.achieved) {
+          tempStreak++;
+          if (currentStreak === 0) currentStreak = tempStreak;
+        } else {
+          if (tempStreak > longestStreak) longestStreak = tempStreak;
+          tempStreak = 0;
+        }
+      }
+      
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+      
+      return {
+        ...goal.toObject(),
+        currentStreak,
+        longestStreak,
+        todayProgress: todayProgress.find(p => p.goalId._id.toString() === goal._id.toString())
+      };
+    }));
+
     res.json({
       activeGoals: activeGoals.length,
       todayProgress,
+      recentProgress,
+      goalsWithStreaks,
       upcomingCare,
       healthTip: randomTip
     });
